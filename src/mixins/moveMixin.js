@@ -48,6 +48,9 @@ export const moveMixin = {
       return !blocked
     },
     checkMove (piece, capturedPiece = null) {
+      console.log(piece.color, this.activeColor)
+      if (piece.color !== this.activeColor) return false
+
       const curPosition = this.getPiece(piece).position
       const position = piece.position
       const diffX = curPosition.x - position.x

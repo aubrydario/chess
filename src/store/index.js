@@ -6,7 +6,6 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     activeColor: 'white',
-    selectedPiece: null,
     pieces: {
       white: [
         { id: 1, name: 'queen', position: { x: 3, y: 7 } },
@@ -49,6 +48,8 @@ export default new Vuex.Store({
   mutations: {
     'MOVE' (state, { piece, position }) {
       piece.position = position
+
+      if (position) state.activeColor = state.activeColor === 'white' ? 'black' : 'white'
     }
   },
   actions: {
@@ -63,7 +64,6 @@ export default new Vuex.Store({
       return state.pieces[color].find(piece => piece.name === name && piece.id === id)
     },
     isPieceOnPos: state => position => {
-      console.log(position)
       const colors = ['white', 'black']
       return colors.some(color => {
         return state.pieces[color]

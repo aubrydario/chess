@@ -19,6 +19,7 @@
 </template>
 
 <script>
+import { mapState } from 'vuex'
 import { moveMixin } from '@/mixins/moveMixin'
 import Pieces from '@/components/pieces'
 
@@ -31,6 +32,11 @@ export default {
   data: () => ({
     dragOverCell: null
   }),
+  computed: {
+    ...mapState([
+      'activeColor'
+    ])
+  },
   methods: {
     onDrop (event) {
       const piece = this.dropSetup(event)

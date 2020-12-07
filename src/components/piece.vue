@@ -16,7 +16,7 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapState, mapGetters } from 'vuex'
 import { moveMixin } from '@/mixins/moveMixin'
 
 export default {
@@ -36,6 +36,9 @@ export default {
     }
   },
   computed: {
+    ...mapState([
+      'activeColor'
+    ]),
     ...mapGetters([
       'getPiece'
     ]),
@@ -73,7 +76,6 @@ export default {
 
       if (piece.color !== capturedPiece.color && this.checkMove(piece, capturedPiece)) {
         console.log('legal')
-        console.log(capturedPiece)
         this.move({ ...capturedPiece, position: null })
       } else {
         console.log('illegal')
