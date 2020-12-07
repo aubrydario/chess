@@ -12,6 +12,11 @@ export const moveMixin = {
     ...mapActions([
       'move'
     ]),
+    dropSetup (event) {
+      event.stopPropagation()
+      event.target.classList.remove('drag-over')
+      return JSON.parse(event.dataTransfer.getData('text/plain'))
+    },
     checkRookMove (curPosition, position, diffX) {
       // check if move is horizontal or vertical
       if (curPosition.x !== position.x && curPosition.y !== position.y) return false
@@ -26,9 +31,9 @@ export const moveMixin = {
 
       return !blocked
     },
-    checkBishopMove (curPosition, position) {
+    checkBishopMove (curPosition, position, diffX, diffY) {
       // check if move is diagonal
-      if (Math.abs(curPosition.x - position.x) !== Math.abs(curPosition.y - position.y)) return false
+      if (Math.abs(diffX) !== Math.abs(diffY)) return false
 
       // check if piece is in the way
       const rangeX = _.range(curPosition.x, position.x)
@@ -42,8 +47,8 @@ export const moveMixin = {
 
       return !blocked
     },
-    checkMove (piece) {
-      const curPosition = this.getPiece({ ...piece }).position
+    checkMove (piece, capturedPiece = null) {
+      const curPosition = this.getPiece(piece).position
       const position = piece.position
       const diffX = curPosition.x - position.x
       const diffY = curPosition.y - position.y
@@ -58,13 +63,13 @@ export const moveMixin = {
 
         case 'queen':
           if (
-            !this.checkBishopMove(curPosition, position) &&
+            !this.checkBishopMove(curPosition, position, diffX, diffY) &&
             !this.checkRookMove(curPosition, position, diffX)
           ) return false
           break
 
         case 'bishop':
-          if (!this.checkBishopMove(curPosition, position)) return false
+          if (!this.checkBishopMove(curPosition, position, diffX, diffY)) return false
           break
 
         case 'rook':
@@ -87,25 +92,27 @@ export const moveMixin = {
           break
 
         case 'pawn':
-          if (piece.color === 'white') {
-            if (
+          var startPawnPosition = piece.color === 'white' ? 6 : 1
+          var maxFirstMove = piece.color === 'white' ? 2 : -2
+          var maxMove = piece.color === 'white' ? 1 : -1
+          var squareAhead = piece.color === 'white' ? curPosition.y - 1 : curPosition.y + 1
+
+          // capture
+          if (capturedPiece && Math.abs(diffX) === diffY * maxMove) break
+
+          if (diffX !== 0) return false
+
+          if (
+            (
               !(
-                curPosition.y === 6 &&
-                curPosition.y - position.y <= 2 &&
-                !this.isPieceOnPos({ x: curPosition.x, y: curPosition.y - 1 })
+                curPosition.y === startPawnPosition &&
+                diffY <= maxFirstMove &&
+                !this.isPieceOnPos({ x: curPosition.x, y: squareAhead })
               ) &&
-              curPosition.y - position.y !== 1
-            ) return false
-          } else {
-            if (
-              !(
-                curPosition.y === 1 &&
-                position.y - curPosition.y <= 2 &&
-                !this.isPieceOnPos({ x: curPosition.x, y: curPosition.y + 1 })
-              ) &&
-              position.y - curPosition.y !== 1
-            ) return false
-          }
+              diffY !== maxMove
+            ) ||
+            this.isPieceOnPos({ ...position })
+          ) return false
           break
       }
 

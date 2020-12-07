@@ -63,10 +63,11 @@ export default new Vuex.Store({
       return state.pieces[color].find(piece => piece.name === name && piece.id === id)
     },
     isPieceOnPos: state => position => {
+      console.log(position)
       const colors = ['white', 'black']
       return colors.some(color => {
         return state.pieces[color]
-          .find(piece => piece.position.x === position.x && piece.position.y === position.y)
+          .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
       })
     }
   }

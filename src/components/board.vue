@@ -33,9 +33,7 @@ export default {
   }),
   methods: {
     onDrop (event) {
-      event.stopPropagation()
-      event.target.classList.remove('drag-over')
-      const piece = JSON.parse(event.dataTransfer.getData('text/plain'))
+      const piece = this.dropSetup(event)
       piece.position = { x: parseInt(event.target.dataset.x), y: parseInt(event.target.dataset.y) }
 
       if (this.checkMove(piece)) {
@@ -77,6 +75,7 @@ $field-dimension: calc(#{$board-dimension} / 8);
     .field {
       width: $field-dimension;
       height: $field-dimension;
+      box-sizing: border-box;
 
       &:nth-child(16n+16),
       &:nth-child(16n+14),
@@ -91,7 +90,7 @@ $field-dimension: calc(#{$board-dimension} / 8);
     }
 
     .drag-over {
-      background: green !important;
+      border: 5px solid lightgray !important;
     }
 
     img {
