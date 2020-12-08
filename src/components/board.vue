@@ -19,7 +19,6 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
 import { moveMixin } from '@/mixins/moveMixin'
 import Pieces from '@/components/pieces'
 
@@ -32,21 +31,12 @@ export default {
   data: () => ({
     dragOverCell: null
   }),
-  computed: {
-    ...mapState([
-      'activeColor'
-    ])
-  },
   methods: {
     onDrop (event) {
       const piece = this.dropSetup(event)
       piece.position = { x: parseInt(event.target.dataset.x), y: parseInt(event.target.dataset.y) }
 
-      if (this.checkMove(piece)) {
-        console.log('legal')
-      } else {
-        console.log('illegal')
-      }
+      this.move(piece)
 
       return false
     },

@@ -6,6 +6,10 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     activeColor: 'white',
+    checkState: {
+      white: false,
+      black: false
+    },
     pieces: {
       white: [
         { id: 1, name: 'queen', position: { x: 3, y: 7 } },
@@ -46,16 +50,21 @@ export default new Vuex.Store({
     }
   },
   mutations: {
-    'MOVE' (state, { piece, position }) {
+    'SET_PIECE_POSITION' (state, { piece, position }) {
       piece.position = position
-
-      if (position) state.activeColor = state.activeColor === 'white' ? 'black' : 'white'
+    },
+    'SET_CHECK_STATE' (state, payload) {
+      const color = state.activeColor === 'white' ? 'black' : 'white'
+      state.checkState[color] = payload
+    },
+    'CHANGE_ACTIVE_COLOR' (state) {
+      state.activeColor = state.activeColor === 'white' ? 'black' : 'white'
     }
   },
   actions: {
-    move ({ commit, state, getters }, { id, color, name, position }) {
+    setPiecePosition ({ commit, state, getters }, { id, color, name, position }) {
       const piece = getters.getPiece({ id, name, color })
-      commit('MOVE', { piece, position })
+      commit('SET_PIECE_POSITION', { piece, position })
     }
   },
   getters: {
@@ -69,6 +78,10 @@ export default new Vuex.Store({
         return state.pieces[color]
           .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
       })
+    },
+    getCheckState: state => color => {
+      color = color || null
+      return color ? state.checkState[color] : state.checkState[state.activeColor]
     }
   }
 })
