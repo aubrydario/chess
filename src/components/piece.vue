@@ -71,9 +71,7 @@ export default {
       capturedPiece.color = data.color
       piece.position = capturedPiece.position
 
-      if (piece.color !== capturedPiece.color && this.move(piece, capturedPiece)) {
-        this.setPiecePosition({ ...capturedPiece, position: null })
-      }
+      if (piece.color !== capturedPiece.color) this.move(piece, capturedPiece)
     }
   },
   created () {

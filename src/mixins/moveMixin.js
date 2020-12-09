@@ -17,7 +17,10 @@ export const moveMixin = {
       'getPiece',
       'isPieceOnPos',
       'getCheckState'
-    ])
+    ]),
+    oppositeColor () {
+      return this.activeColor === 'white' ? 'black' : 'white'
+    }
   },
   methods: {
     ...mapMutations({
@@ -98,15 +101,13 @@ export const moveMixin = {
       ) ||
       this.isPieceOnPos({ ...this.movedPos }))
     },
-    isLegalMove (piece, capturedPiece) {
-      if (piece.color !== this.activeColor || (this.getCheckState() && piece.name !== 'king')) return false
-
+    isLegalMove (piece, capturedPiece = null) {
       this.curPos = this.getPiece(piece).position
-      console.log(this.curPos)
       this.movedPos = piece.position
       this.diffX = this.curPos.x - this.movedPos.x
       this.diffY = this.curPos.y - this.movedPos.y
 
+      // check if piece move is correct
       switch (piece.name) {
         case 'king':
           if (
@@ -140,27 +141,48 @@ export const moveMixin = {
       }
       return true
     },
+    isCheck (color = this.activeColor) {
+      const oppositeColor = color === 'white' ? 'black' : 'white'
+      const kingPosition = this.getPiece({ id: 1, name: 'king', color: color }).position
+
+      return this.pieces[oppositeColor].some(piece => {
+        if (piece.position) {
+          const pieceClone = _.clone(piece)
+          pieceClone.position = kingPosition
+          pieceClone.color = oppositeColor
+
+          return this.isLegalMove(pieceClone)
+        }
+        return false
+      })
+    },
     move (piece, capturedPiece = null) {
+      // check if correct colors turn
+      if (piece.color !== this.activeColor) return false
+
       if (this.isLegalMove(piece, capturedPiece)) {
-        const oppositeColor = this.activeColor === 'white' ? 'black' : 'white'
-        const oppositeKingPosition = this.getPiece({ id: 1, name: 'king', color: oppositeColor }).position
-
         console.log('legal move')
+        const piecesBeforeMove = _.cloneDeep(this.pieces)
+        const pieceBeforeMove = piecesBeforeMove[this.activeColor].find(p => p.name === piece.name && p.id === piece.id)
+
         this.setPiecePosition(piece)
+        if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
 
-        this.pieces[this.activeColor].forEach(pieceItem => {
-          if (pieceItem.position) {
-            const clonePiece = { ...pieceItem }
-            clonePiece.position = oppositeKingPosition
-            clonePiece.color = this.activeColor
-            if (this.isLegalMove(clonePiece, capturedPiece)) this.setCheckState(true)
-          }
-        })
+        // is reacted on check (not in check after move)
+        if (this.getCheckState() && this.isCheck()) {
+          this.setPiecePosition(pieceBeforeMove)
+          this.setPiecePosition(capturedPiece)
 
+          return false
+        }
+
+        this.setCheckState({ color: this.oppositeColor, checkState: this.isCheck(this.oppositeColor) })
         this.changeActiveColor()
+
         return true
       } else {
         console.log('illegal move')
+
         return false
       }
     }

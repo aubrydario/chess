@@ -53,9 +53,8 @@ export default new Vuex.Store({
     'SET_PIECE_POSITION' (state, { piece, position }) {
       piece.position = position
     },
-    'SET_CHECK_STATE' (state, payload) {
-      const color = state.activeColor === 'white' ? 'black' : 'white'
-      state.checkState[color] = payload
+    'SET_CHECK_STATE' (state, { color, checkState }) {
+      state.checkState[color] = checkState
     },
     'CHANGE_ACTIVE_COLOR' (state) {
       state.activeColor = state.activeColor === 'white' ? 'black' : 'white'
@@ -80,8 +79,8 @@ export default new Vuex.Store({
       })
     },
     getCheckState: state => color => {
-      color = color || null
-      return color ? state.checkState[color] : state.checkState[state.activeColor]
+      color = color || state.activeColor
+      return state.checkState[color]
     }
   }
 })
