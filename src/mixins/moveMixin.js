@@ -84,7 +84,7 @@ export const moveMixin = {
       const squareAhead = color === 'white' ? this.curPos.y - 1 : this.curPos.y + 1
 
       // capture
-      if (capturedPiece && Math.abs(this.diffX) === this.diffY * maxMove) return true
+      if (Math.abs(this.diffX) * maxMove === maxMove && this.diffY === maxMove && this.isPieceOnPos(this.movedPos)) return true
 
       if (this.diffX !== 0) return false
 
@@ -164,19 +164,20 @@ export const moveMixin = {
         console.log('legal move')
         const piecesBeforeMove = _.cloneDeep(this.pieces)
         const pieceBeforeMove = piecesBeforeMove[this.activeColor].find(p => p.name === piece.name && p.id === piece.id)
+        const capturedPieceBeforeMove = _.clone(capturedPiece)
 
         this.setPiecePosition(piece)
         if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
 
         // is reacted on check (not in check after move)
-        if (this.getCheckState() && this.isCheck()) {
+        if (this.isCheck()) {
           this.setPiecePosition(pieceBeforeMove)
-          this.setPiecePosition(capturedPiece)
-
+          if (capturedPiece) this.setPiecePosition(capturedPieceBeforeMove)
           return false
         }
 
         this.setCheckState({ color: this.oppositeColor, checkState: this.isCheck(this.oppositeColor) })
+
         this.changeActiveColor()
 
         return true
