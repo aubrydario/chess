@@ -8,6 +8,7 @@
       :data-name="name"
       :data-id="id"
       draggable="true"
+      @mousedown="setLegalMoves(piece)"
       @dragstart="onDragStart"
       @drop="onDrop"
       @dragenter.prevent
@@ -55,23 +56,15 @@ export default {
   },
   methods: {
     onDragStart (event) {
-      const data = {
-        id: this.id,
-        color: this.$parent.color,
-        name: this.name
-      }
-
       event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData('text/plain', JSON.stringify(data))
+      event.dataTransfer.setData('text/plain', JSON.stringify(this.piece))
     },
     onDrop (event) {
       const piece = this.dropSetup(event)
       const data = event.target.dataset
       const capturedPiece = this.getPiece({ id: parseInt(data.id), name: data.name, color: data.color })
-      capturedPiece.color = data.color
-      piece.position = capturedPiece.position
 
-      if (piece.color !== capturedPiece.color) this.move(piece, capturedPiece)
+      if (piece.color !== capturedPiece.color) this.move(piece, capturedPiece.position, capturedPiece)
     }
   },
   created () {

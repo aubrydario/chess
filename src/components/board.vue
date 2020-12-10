@@ -34,9 +34,9 @@ export default {
   methods: {
     onDrop (event) {
       const piece = this.dropSetup(event)
-      piece.position = { x: parseInt(event.target.dataset.x), y: parseInt(event.target.dataset.y) }
+      const newPos = { x: parseInt(event.target.dataset.x), y: parseInt(event.target.dataset.y) }
 
-      this.move(piece)
+      this.move(piece, newPos)
 
       return false
     },

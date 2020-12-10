@@ -3,10 +3,8 @@ import _ from 'lodash'
 
 export const moveMixin = {
   data: () => ({
-    curPos: null,
-    movedPos: null,
-    diffX: 0,
-    diffY: 0
+    diagonal: [{ x: 1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: -1, y: -1 }],
+    straight: [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]
   }),
   computed: {
     ...mapState([
@@ -28,164 +26,134 @@ export const moveMixin = {
       changeActiveColor: 'CHANGE_ACTIVE_COLOR'
     }),
     ...mapActions([
-      'setPiecePosition'
+      'setPiecePosition',
+      'setPieceMoves'
     ]),
     dropSetup (event) {
       event.stopPropagation()
       event.target.classList.remove('drag-over')
       return JSON.parse(event.dataTransfer.getData('text/plain'))
     },
-    checkRookMove () {
-      // check if move is horizontal or vertical
-      if (this.curPos.x !== this.movedPos.x && this.curPos.y !== this.movedPos.y) return false
+    getMovesFromDirections (directions, position) {
+      const startPosition = _.clone(position)
+      const legalMoves = []
 
-      // check if piece is in the way
-      const range = _.range(this.curPos[this.diffX === 0 ? 'y' : 'x'], this.movedPos[this.diffX === 0 ? 'y' : 'x'])
-      range.shift() // remove first item
-      const blocked = range.some(item => {
-        const checkPosition = this.diffX === 0 ? { x: this.curPos.x, y: item } : { x: item, y: this.curPos.y }
-        return this.isPieceOnPos(checkPosition)
+      directions.forEach(direction => {
+        position = _.clone(startPosition)
+        position.x += direction.x
+        position.y += direction.y
+
+        while (position.x < 8 && position.y < 8 && position.x >= 0 && position.y >= 0) {
+          if (this.isPieceOnPos({ position, colors: [this.activeColor] })) break
+          legalMoves.push(_.clone(position))
+          if (this.isPieceOnPos({ position, colors: [this.oppositeColor] })) break
+
+          position.x += direction.x
+          position.y += direction.y
+        }
       })
 
-      return !blocked
+      return legalMoves
     },
-    checkBishopMove () {
-      // check if move is diagonal
-      if (Math.abs(this.diffX) !== Math.abs(this.diffY)) return false
+    getMovesFromSquares (squares, position) {
+      const startPosition = _.clone(position)
+      const legalMoves = []
 
-      // check if piece is in the way
-      const rangeX = _.range(this.curPos.x, this.movedPos.x)
-      const rangeY = _.range(this.curPos.y, this.movedPos.y)
-      rangeX.shift() // remove first item
-      rangeY.shift() // remove first item
-
-      const blocked = rangeX.some((item, index) => {
-        return this.isPieceOnPos({ x: item, y: rangeY[index] })
+      squares.forEach(square => {
+        position = _.clone(startPosition)
+        position = { x: position.x + square.x, y: position.y + square.y }
+        if (
+          position.x < 8 && position.y < 8 && position.x >= 0 && position.y >= 0 &&
+          !this.isPieceOnPos({ position, colors: [this.activeColor] })
+        ) legalMoves.push(position)
       })
 
-      return !blocked
+      return legalMoves
     },
-    checkKnightMove () {
-      return (
-        (this.curPos.x + 2 === this.movedPos.x && this.curPos.y + 1 === this.movedPos.y) ||
-        (this.curPos.x + 2 === this.movedPos.x && this.curPos.y - 1 === this.movedPos.y) ||
-        (this.curPos.x - 2 === this.movedPos.x && this.curPos.y + 1 === this.movedPos.y) ||
-        (this.curPos.x - 2 === this.movedPos.x && this.curPos.y - 1 === this.movedPos.y) ||
-        (this.curPos.y + 2 === this.movedPos.y && this.curPos.x + 1 === this.movedPos.x) ||
-        (this.curPos.y + 2 === this.movedPos.y && this.curPos.x - 1 === this.movedPos.x) ||
-        (this.curPos.y - 2 === this.movedPos.y && this.curPos.x + 1 === this.movedPos.x) ||
-        (this.curPos.y - 2 === this.movedPos.y && this.curPos.x - 1 === this.movedPos.x)
-      )
+    getPawnMoves (piece) {
+      let position = null
+      const legalMoves = []
+      const startPawnPosition = piece.color === 'white' ? 6 : 1
+      const maxFirstMove = piece.color === 'white' ? -2 : 2
+      const maxMove = piece.color === 'white' ? -1 : 1
+
+      // is no piece on the square ahead
+      position = { x: piece.position.x, y: piece.position.y + maxMove }
+      if (!this.isPieceOnPos({ position })) {
+        legalMoves.push(position)
+
+        // is pawn on the starting square and is no piece on the square ahead
+        position = { x: piece.position.x, y: piece.position.y + maxFirstMove }
+        if (
+          this.piece.position.y === startPawnPosition &&
+          !this.isPieceOnPos({ position })
+        ) legalMoves.push(position)
+      }
+
+      // is opposite piece directly diagonal
+      [1, -1].forEach(x => {
+        position = { x: piece.position.x + x, y: piece.position.y + maxMove }
+        if (this.isPieceOnPos({ position, colors: [this.oppositeColor] })) legalMoves.push(position)
+      })
+
+      return legalMoves
     },
-    checkPawnMove (color, capturedPiece) {
-      const startPawnPosition = color === 'white' ? 6 : 1
-      const maxFirstMove = color === 'white' ? 2 : -2
-      const maxMove = color === 'white' ? 1 : -1
-      const squareAhead = color === 'white' ? this.curPos.y - 1 : this.curPos.y + 1
-
-      // capture
-      if (Math.abs(this.diffX) * maxMove === maxMove && this.diffY === maxMove && this.isPieceOnPos(this.movedPos)) return true
-
-      if (this.diffX !== 0) return false
-
-      return !((
-        !(
-          this.curPos.y === startPawnPosition &&
-          (this.diffY === maxFirstMove || this.diffY === maxMove) &&
-          !this.isPieceOnPos({
-            x: this.curPos.x,
-            y: squareAhead
-          })
-        ) &&
-        this.diffY !== maxMove
-      ) ||
-      this.isPieceOnPos({ ...this.movedPos }))
+    getBishopMoves (piece) {
+      return this.getMovesFromDirections(this.diagonal, piece.position)
     },
-    isLegalMove (piece, capturedPiece = null) {
-      this.curPos = this.getPiece(piece).position
-      this.movedPos = piece.position
-      this.diffX = this.curPos.x - this.movedPos.x
-      this.diffY = this.curPos.y - this.movedPos.y
+    getRookMoves (piece) {
+      return this.getMovesFromDirections(this.straight, piece.position)
+    },
+    setLegalMoves (piece) {
+      let legalMoves = null
+      console.log(piece)
 
-      // check if piece move is correct
       switch (piece.name) {
-        case 'king':
-          if (
-            (this.diffX > 1 || this.diffX < -1) ||
-            (this.diffY > 1 || this.diffY < -1)
-          ) return false
-          break
-
-        case 'queen':
-          if (
-            !this.checkBishopMove() &&
-            !this.checkRookMove()
-          ) return false
-          break
-
-        case 'bishop':
-          if (!this.checkBishopMove()) return false
-          break
-
-        case 'rook':
-          if (!this.checkRookMove()) return false
+        case 'pawn':
+          legalMoves = this.getPawnMoves(piece)
           break
 
         case 'knight':
-          if (!this.checkKnightMove()) return false
+          var knightPositions = [
+            { x: 2, y: 1 }, { x: 2, y: -1 }, { x: -2, y: 1 }, { x: -2, y: -1 },
+            { x: 1, y: 2 }, { x: 1, y: -2 }, { x: -1, y: 2 }, { x: -1, y: -2 }
+          ]
+          legalMoves = this.getMovesFromSquares(knightPositions, piece.position)
           break
 
-        case 'pawn':
-          if (!this.checkPawnMove(piece.color, capturedPiece)) return false
+        case 'bishop':
+          legalMoves = this.getBishopMoves(piece)
+          break
+
+        case 'rook':
+          legalMoves = this.getRookMoves(piece)
+          break
+
+        case 'queen':
+          legalMoves = [...this.getBishopMoves(piece), ...this.getRookMoves(piece)]
+          break
+
+        case 'king':
+          legalMoves = this.getMovesFromSquares([...this.diagonal, ...this.straight], piece.position)
           break
       }
-      return true
+
+      console.log(legalMoves)
+      if (legalMoves.length) this.setPieceMoves({ ...piece, moves: legalMoves })
     },
-    isCheck (color = this.activeColor) {
-      const oppositeColor = color === 'white' ? 'black' : 'white'
-      const kingPosition = this.getPiece({ id: 1, name: 'king', color: color }).position
+    move (piece, newPos, capturedPiece = null) {
+      if (piece.moves && piece.color === this.activeColor) {
+        const move = piece.moves.find(move => _.isEqual(move, newPos))
 
-      return this.pieces[oppositeColor].some(piece => {
-        if (piece.position) {
-          const pieceClone = _.clone(piece)
-          pieceClone.position = kingPosition
-          pieceClone.color = oppositeColor
+        if (move) {
+          this.setPiecePosition({ ...piece, position: newPos })
+          if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
 
-          return this.isLegalMove(pieceClone)
+          this.changeActiveColor()
         }
-        return false
-      })
-    },
-    move (piece, capturedPiece = null) {
-      // check if correct colors turn
-      if (piece.color !== this.activeColor) return false
-
-      if (this.isLegalMove(piece, capturedPiece)) {
-        console.log('legal move')
-        const piecesBeforeMove = _.cloneDeep(this.pieces)
-        const pieceBeforeMove = piecesBeforeMove[this.activeColor].find(p => p.name === piece.name && p.id === piece.id)
-        const capturedPieceBeforeMove = _.clone(capturedPiece)
-
-        this.setPiecePosition(piece)
-        if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
-
-        // is reacted on check (not in check after move)
-        if (this.isCheck()) {
-          this.setPiecePosition(pieceBeforeMove)
-          if (capturedPiece) this.setPiecePosition(capturedPieceBeforeMove)
-          return false
-        }
-
-        this.setCheckState({ color: this.oppositeColor, checkState: this.isCheck(this.oppositeColor) })
-
-        this.changeActiveColor()
-
-        return true
-      } else {
-        console.log('illegal move')
-
-        return false
       }
+
+      return false
     }
   }
 }
