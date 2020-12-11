@@ -46,6 +46,9 @@ export default {
     onDragLeave (event) {
       event.target.classList.remove('drag-over')
     }
+  },
+  mounted () {
+    this.setAllLegalMoves()
   }
 }
 </script>

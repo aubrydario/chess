@@ -8,7 +8,7 @@
       :data-name="name"
       :data-id="id"
       draggable="true"
-      @mousedown="setLegalMoves(piece)"
+      @mousedown="getLegalMoves(piece)"
       @dragstart="onDragStart"
       @drop="onDrop"
       @dragenter.prevent

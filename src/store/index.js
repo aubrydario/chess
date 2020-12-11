@@ -81,13 +81,16 @@ export default new Vuex.Store({
 
       return piece
     },
-    isPieceOnPos: state => ({ position, colors }) => {
+    getPieceOnPos: state => ({ position, colors }) => {
       colors = colors || ['white', 'black']
+      let piece = null
 
-      return colors.some(color => {
-        return state.pieces[color]
+      colors.some(color => {
+        piece = state.pieces[color]
           .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
       })
+
+      return piece
     },
     getCheckState: state => color => {
       color = color || state.activeColor
