@@ -9,21 +9,26 @@ export const moveMixin = {
   computed: {
     ...mapState([
       'activeColor',
-      'pieces'
+      'pieces',
+      'simulationCheckState'
     ]),
     ...mapGetters([
       'getPiece',
       'getPieceOnPos',
-      'getCheckState'
+      'getCheckState',
+      'getSimulationCheckState',
+      'getAllLegalMovesForColor'
     ])
   },
   methods: {
     ...mapMutations({
       setCheckState: 'SET_CHECK_STATE',
-      changeActiveColor: 'CHANGE_ACTIVE_COLOR'
+      changeActiveColor: 'CHANGE_ACTIVE_COLOR',
+      setSimulationCheckState: 'SET_SIMULATION_CHECK_STATE'
     }),
     ...mapActions([
       'setPiecePosition',
+      'setSimulationPiecePosition',
       'setPieceMoves'
     ]),
     oppositeColor (color) {
@@ -34,28 +39,45 @@ export const moveMixin = {
       event.target.classList.remove('drag-over')
       return JSON.parse(event.dataTransfer.getData('text/plain'))
     },
-    setCheckWhenKingOnPos (position, piece) {
+    addLegalMove (moves, newMove, piece, simulation) {
+      if (simulation || !this.getCheckState() || this.blocksCheck(piece, newMove)) {
+        moves.push(_.clone(newMove))
+      }
+
+      return moves
+    },
+    simulateIfStillCheck (color) {
+      const pieces = this.pieces[color].filter(piece =>
+        piece.name === 'rook' ||
+        piece.name === 'queen' ||
+        piece.name === 'bishop'
+      )
+
+      pieces.forEach(piece => {
+        if (piece.position) this.getLegalMoves(piece, true)
+      })
+    },
+    blocksCheck (piece, newPos) {
+      this.setSimulationCheckState(false)
+      this.setSimulationPiecePosition({ ...piece, position: newPos })
+
+      // set check state
+      this.simulateIfStillCheck(this.oppositeColor(piece.color))
+
+      return !this.getSimulationCheckState()
+    },
+    setCheckWhenKingOnPos (position, piece, simulation) {
       if (piece && piece.name === 'king') {
+        if (simulation) {
+          this.setSimulationCheckState(true)
+          return
+        }
         this.setCheckState({ color: piece.color, checkState: true })
       }
     },
-    isStillCheck (color) {
-      let checkState = true
-
-      this.setCheckState({ color, checkState: false })
-
-      this.pieces[this.oppositeColor(color)].forEach(piece => {
-        if (piece.position) this.getLegalMoves(piece, true)
-      })
-
-      checkState = this.getCheckState(color)
-      this.setCheckState({ color, checkState: true })
-
-      return checkState
-    },
-    getMovesFromDirections (directions, piece) {
+    getMovesFromDirections (directions, piece, simulation) {
       const startPosition = _.clone(piece.position)
-      const legalMoves = []
+      let legalMoves = []
       let position = null
 
       directions.forEach(direction => {
@@ -64,21 +86,13 @@ export const moveMixin = {
         position.y += direction.y
 
         while (position.x < 8 && position.y < 8 && position.x >= 0 && position.y >= 0) {
-          if (this.getPieceOnPos({ position, colors: [piece.color] })) break
-          legalMoves.push(_.clone(position))
-          // if (this.getCheckState()) {
-          //   console.log(this.isStillCheck(piece.color))
-          //
-          //   if (!this.isStillCheck(piece.color)) {
-          //     legalMoves.push(_.clone(position))
-          //   }
-          // } else {
-          //   legalMoves.push(_.clone(position))
-          // }
+          if (this.getPieceOnPos({ position, colors: [piece.color], simulation })) break
 
-          const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)] })
+          legalMoves = this.addLegalMove(legalMoves, position, piece, simulation)
+
+          const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)], simulation })
           if (oppositePieceOnPos) {
-            this.setCheckWhenKingOnPos(position, oppositePieceOnPos)
+            this.setCheckWhenKingOnPos(position, oppositePieceOnPos, simulation)
             break
           }
 
@@ -89,9 +103,9 @@ export const moveMixin = {
 
       return legalMoves
     },
-    getMovesFromSquares (squares, piece) {
+    getMovesFromSquares (squares, piece, simulation) {
       const startPosition = _.clone(piece.position)
-      const legalMoves = []
+      let legalMoves = []
       let position = null
 
       squares.forEach(square => {
@@ -101,69 +115,65 @@ export const moveMixin = {
           position.x < 8 && position.y < 8 && position.x >= 0 && position.y >= 0 &&
           !this.getPieceOnPos({ position, colors: [piece.color] })
         ) {
-          legalMoves.push(position)
+          legalMoves = this.addLegalMove(legalMoves, position, piece, simulation)
 
-          const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)] })
-          this.setCheckWhenKingOnPos(position, oppositePieceOnPos)
+          const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)], simulation })
+          this.setCheckWhenKingOnPos(position, oppositePieceOnPos, simulation)
         }
       })
 
       return legalMoves
     },
-    getPawnMoves (piece) {
+    getPawnMoves (piece, simulation) {
       let position = null
-      const legalMoves = []
+      let legalMoves = []
       const startPawnPosition = piece.color === 'white' ? 6 : 1
       const maxFirstMove = piece.color === 'white' ? -2 : 2
       const maxMove = piece.color === 'white' ? -1 : 1
 
       // is no piece on the square ahead
       position = { x: piece.position.x, y: piece.position.y + maxMove }
-      if (!this.getPieceOnPos({ position })) {
-        legalMoves.push(position)
+      if (!this.getPieceOnPos({ position, simulation })) {
+        legalMoves = this.addLegalMove(legalMoves, position, piece, simulation)
 
         // is pawn on the starting square and is no piece on the square ahead
         position = { x: piece.position.x, y: piece.position.y + maxFirstMove }
         if (
           piece.position.y === startPawnPosition &&
-          !this.getPieceOnPos({ position })
-        ) legalMoves.push(position)
+          !this.getPieceOnPos({ position, simulation })
+        ) {
+          legalMoves = this.addLegalMove(legalMoves, position, piece, simulation)
+        }
       }
 
       // is opposite piece directly diagonal
       [1, -1].forEach(x => {
         position = { x: piece.position.x + x, y: piece.position.y + maxMove }
-        const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)] })
+        const oppositePieceOnPos = this.getPieceOnPos({ position, colors: [this.oppositeColor(piece.color)], simulation })
         if (oppositePieceOnPos) {
-          legalMoves.push(position)
+          legalMoves = this.addLegalMove(legalMoves, position, piece, simulation)
 
-          this.setCheckWhenKingOnPos(position, oppositePieceOnPos)
+          this.setCheckWhenKingOnPos(position, oppositePieceOnPos, simulation)
         }
       })
 
       return legalMoves
     },
-    getBishopMoves (piece) {
-      return this.getMovesFromDirections(this.diagonal, piece)
-    },
-    getRookMoves (piece) {
-      return this.getMovesFromDirections(this.straight, piece)
-    },
-    setAllLegalMoves () {
-      ['white', 'black'].forEach(color => this.pieces[color].forEach(piece => {
+    setAllLegalMovesForColor (color, simulation = false) {
+      this.pieces[color].forEach(piece => {
         if (piece.position) {
-          const moves = this.getLegalMoves(piece)
-          if (moves) this.setPieceMoves({ ...piece, moves })
+          const moves = this.getLegalMoves(piece, simulation)
+
+          if (!simulation && moves) this.setPieceMoves({ ...piece, moves })
         }
-      }))
+      })
     },
-    getLegalMoves (piece, testCheck = false) {
+    getLegalMoves (piece, simulation) {
       let legalMoves = null
-      console.log(JSON.stringify(piece))
 
       switch (piece.name) {
         case 'pawn':
-          legalMoves = this.getPawnMoves(piece)
+          legalMoves = this.getPawnMoves(piece, simulation)
           break
 
         case 'knight':
@@ -171,27 +181,33 @@ export const moveMixin = {
             { x: 2, y: 1 }, { x: 2, y: -1 }, { x: -2, y: 1 }, { x: -2, y: -1 },
             { x: 1, y: 2 }, { x: 1, y: -2 }, { x: -1, y: 2 }, { x: -1, y: -2 }
           ]
-          legalMoves = this.getMovesFromSquares(knightPositions, piece)
+          legalMoves = this.getMovesFromSquares(knightPositions, piece, simulation)
           break
 
         case 'bishop':
-          legalMoves = this.getBishopMoves(piece)
+          legalMoves = this.getMovesFromDirections(this.diagonal, piece, simulation)
           break
 
         case 'rook':
-          legalMoves = this.getRookMoves(piece)
+          legalMoves = this.getMovesFromDirections(this.straight, piece, simulation)
           break
 
         case 'queen':
-          legalMoves = [...this.getBishopMoves(piece), ...this.getRookMoves(piece)]
+          legalMoves = [
+            ...this.getMovesFromDirections(this.diagonal, piece, simulation),
+            ...this.getMovesFromDirections(this.straight, piece, simulation)
+          ]
           break
 
         case 'king':
-          legalMoves = this.getMovesFromSquares([...this.diagonal, ...this.straight], piece)
+          legalMoves = this.getMovesFromSquares([...this.diagonal, ...this.straight], piece, simulation)
           break
       }
 
-      console.log(legalMoves)
+      if (this.getCheckState(this.activeColor)) {
+
+      }
+
       return legalMoves
     },
     move (piece, newPos, capturedPiece = null) {
@@ -203,8 +219,11 @@ export const moveMixin = {
           this.setPiecePosition({ ...piece, position: newPos })
           if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
 
+          // is move a check, set check state
+          this.getLegalMoves(this.getPiece({ ...piece }))
+
           this.changeActiveColor()
-          this.setAllLegalMoves()
+          this.setAllLegalMovesForColor(this.activeColor)
         }
       }
 

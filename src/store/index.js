@@ -1,6 +1,8 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 
+import _ from 'lodash'
+
 Vue.use(Vuex)
 
 export default new Vuex.Store({
@@ -10,6 +12,8 @@ export default new Vuex.Store({
       white: false,
       black: false
     },
+    simulationCheckState: false,
+    simulationPieces: null,
     pieces: {
       white: [
         { id: 1, name: 'queen', position: { x: 3, y: 7 }, moves: null },
@@ -61,6 +65,12 @@ export default new Vuex.Store({
     },
     'SET_PIECE_MOVES' (state, { piece, moves }) {
       piece.moves = moves
+    },
+    'SET_SIMULATION_CHECK_STATE' (state, checkState) {
+      state.simulationCheckState = checkState
+    },
+    'SET_SIMULATION_PIECES' (state) {
+      state.simulationPieces = _.cloneDeep(state.pieces)
     }
   },
   actions: {
@@ -68,33 +78,62 @@ export default new Vuex.Store({
       const piece = getters.getPiece({ id, name, color })
       commit('SET_PIECE_POSITION', { piece, position })
     },
+    setSimulationPiecePosition ({ commit, state, getters }, { id, color, name, position }) {
+      commit('SET_SIMULATION_PIECES')
+      const simulationPiece = getters.getPiece({ id, name, color, simulation: true })
+      commit('SET_PIECE_POSITION', { piece: simulationPiece, position })
+    },
     setPieceMoves ({ commit, state, getters }, { id, color, name, moves }) {
       const piece = getters.getPiece({ id, name, color })
       commit('SET_PIECE_MOVES', { piece, moves })
     }
   },
   getters: {
-    getPiece: state => ({ id, name, color }) => {
+    getPiece: state => ({ id, name, color, simulation }) => {
+      simulation = simulation || false
       color = color || state.activeColor
-      const piece = state.pieces[color].find(piece => piece.name === name && piece.id === id)
+      let piece = state.pieces[color].find(piece => piece.name === name && piece.id === id)
+
+      if (simulation) {
+        piece = state.simulationPieces[color].find(piece => piece.name === name && piece.id === id)
+      }
+
       piece.color = color
 
       return piece
     },
-    getPieceOnPos: state => ({ position, colors }) => {
+    getPieceOnPos: state => ({ position, colors, simulation }) => {
       colors = colors || ['white', 'black']
       let piece = null
 
-      colors.some(color => {
-        piece = state.pieces[color]
-          .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
-      })
+      if (simulation) {
+        colors.some(color => {
+          piece = state.simulationPieces[color]
+            .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+        })
+      } else {
+        colors.some(color => {
+          piece = state.pieces[color]
+            .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+        })
+      }
 
       return piece
     },
     getCheckState: state => color => {
       color = color || state.activeColor
       return state.checkState[color]
+    },
+    getSimulationCheckState: state => () => {
+      return state.simulationCheckState
+    },
+    getAllLegalMovesForColor: state => color => {
+      const movesArray = []
+      state.pieces[color].forEach(piece => {
+        movesArray.push(...piece.moves)
+      })
+
+      return movesArray
     }
   }
 })

@@ -8,7 +8,7 @@
       :data-name="name"
       :data-id="id"
       draggable="true"
-      @mousedown="getLegalMoves(piece)"
+      @mousedown="log(getPiece({ id, name, color: $parent.color }).moves)"
       @dragstart="onDragStart"
       @drop="onDrop"
       @dragenter.prevent
@@ -55,6 +55,9 @@ export default {
     }
   },
   methods: {
+    log (m) {
+      console.log(m)
+    },
     onDragStart (event) {
       event.dataTransfer.effectAllowed = 'move'
       event.dataTransfer.setData('text/plain', JSON.stringify(this.piece))

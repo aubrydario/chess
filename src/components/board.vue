@@ -48,7 +48,7 @@ export default {
     }
   },
   mounted () {
-    this.setAllLegalMoves()
+    this.setAllLegalMovesForColor(this.activeColor)
   }
 }
 </script>
