@@ -8,6 +8,7 @@ Vue.use(Vuex)
 export default new Vuex.Store({
   state: {
     activeColor: 'white',
+    clickedPiece: null,
     checkState: {
       white: false,
       black: false
@@ -65,6 +66,9 @@ export default new Vuex.Store({
     },
     'SET_PIECE_MOVES' (state, { piece, moves }) {
       piece.moves = moves
+    },
+    'SET_CLICKED_PIECE' (state, piece) {
+      state.clickedPiece = piece
     },
     'SET_SIMULATION_CHECK_STATE' (state, checkState) {
       state.simulationCheckState = checkState

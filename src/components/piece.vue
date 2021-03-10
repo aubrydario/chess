@@ -1,23 +1,22 @@
 <template>
-    <img
-      v-if="piece && position"
-      :src="img"
-      :alt="`${$parent.color} ${name}`"
-      :style="position"
-      :data-color="$parent.color"
-      :data-name="name"
-      :data-id="id"
-      draggable="true"
-      @mousedown="log(getPiece({ id, name, color: $parent.color }).moves)"
-      @dragstart="onDragStart"
-      @drop="onDrop"
-      @dragenter.prevent
-      @dragover.prevent
-    />
+  <img
+    v-if="piece && position"
+    :src="img"
+    :alt="`${$parent.color} ${name}`"
+    :style="position"
+    :data-color="$parent.color"
+    :data-name="name"
+    :data-id="id"
+    draggable="true"
+    @mousedown="showPossibleMoves()"
+    @dragstart="onDragStart"
+    @dragenter.prevent
+    @dragover.prevent
+  />
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapMutations } from 'vuex'
 import { moveMixin } from '@/mixins/moveMixin'
 
 export default {
@@ -37,9 +36,6 @@ export default {
     }
   },
   computed: {
-    ...mapGetters([
-      'getPiece'
-    ]),
     piece () {
       return this.getPiece({ id: this.id, name: this.name, color: this.$parent.color })
     },
@@ -55,19 +51,18 @@ export default {
     }
   },
   methods: {
-    log (m) {
-      console.log(m)
+    ...mapMutations({
+      setClickedPiece: 'SET_CLICKED_PIECE'
+    }),
+    showPossibleMoves () {
+      if (this.activeColor === this.$parent.color) {
+        const piece = this.getPiece({ id: this.id, name: this.name, color: this.$parent.color })
+        this.setClickedPiece(piece)
+      }
     },
     onDragStart (event) {
       event.dataTransfer.effectAllowed = 'move'
       event.dataTransfer.setData('text/plain', JSON.stringify(this.piece))
-    },
-    onDrop (event) {
-      const piece = this.dropSetup(event)
-      const data = event.target.dataset
-      const capturedPiece = this.getPiece({ id: parseInt(data.id), name: data.name, color: data.color })
-
-      if (piece.color !== capturedPiece.color) this.move(piece, capturedPiece.position, capturedPiece)
     }
   },
   created () {

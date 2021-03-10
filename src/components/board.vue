@@ -7,18 +7,39 @@
         class="field"
         :data-x="(cell - 1) % 8"
         :data-y="Math.floor((cell - 1) / 8)"
-        @drop="onDrop"
-        @dragover="onDragEnter"
-        @dragleave="onDragLeave"
-        @dragenter.prevent
-        @dragover.prevent
       ></div>
       <pieces v-for="color in ['white', 'black']" :key="color" :color="color"></pieces>
+      <div v-if="clickedPiece">
+        <div v-for="(move, index) in clickedPiece.moves"
+          :key="index"
+          class="possible-move"
+          :style="getPosition(move)"
+          :data-x="move.x"
+          :data-y="move.y"
+          @drop="onDrop"
+          @dragover="onDragEnter"
+          @dragleave="onDragLeave"
+          @dragenter.prevent
+          @dragover.prevent
+        >
+          <span
+            :data-x="move.x"
+            :data-y="move.y"
+            @drop="onDrop"
+            @dragover="onDragEnter"
+            @dragleave="onDragLeave"
+            @dragenter.prevent
+            @dragover.prevent
+            class="possible-move__circle"
+          ></span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import { mapState, mapMutations } from 'vuex'
 import { moveMixin } from '@/mixins/moveMixin'
 import Pieces from '@/components/pieces'
 
@@ -31,20 +52,48 @@ export default {
   data: () => ({
     dragOverCell: null
   }),
+  computed: {
+    ...mapState([
+      'clickedPiece'
+    ])
+  },
   methods: {
+    ...mapMutations({
+      setClickedPiece: 'SET_CLICKED_PIECE'
+    }),
     onDrop (event) {
       const piece = this.dropSetup(event)
-      const newPos = { x: parseInt(event.target.dataset.x), y: parseInt(event.target.dataset.y) }
+      const data = event.target.dataset
+      const newPos = { x: parseInt(data.x), y: parseInt(data.y) }
+      const oppositeColor = this.activeColor === 'white' ? 'black' : 'white'
+      const capturedPiece = this.getPieceOnPos({ position: newPos, colors: [oppositeColor] })
 
+      this.setClickedPiece(null)
+
+      if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
       this.move(piece, newPos)
 
       return false
     },
     onDragEnter (event) {
-      event.target.classList.add('drag-over')
+      let field = event.target
+      if (field.className === 'possible-move__circle') {
+        field = field.parentNode
+      }
+      field.classList.add('drag-over')
     },
     onDragLeave (event) {
-      event.target.classList.remove('drag-over')
+      let field = event.target
+      if (field.className === 'possible-move__circle') {
+        field = field.parentNode
+      }
+      field.classList.remove('drag-over')
+    },
+    getPosition (move) {
+      return {
+        left: move.x * (700 / 8) + 'px',
+        top: move.y * (700 / 8) + 'px'
+      }
     }
   },
   mounted () {
@@ -97,6 +146,24 @@ $field-dimension: calc(#{$board-dimension} / 8);
       height: $field-dimension;
       position: absolute;
       cursor: grab;
+    }
+
+    .possible-move {
+      position: absolute;
+      width: $field-dimension;
+      height: $field-dimension;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+
+      .possible-move__circle {
+        display: block;
+        width: 50px;
+        height: 50px;
+        background-color: rgba(150, 150, 150, 0.5);
+        border-radius: 50%;
+      }
     }
   }
 }

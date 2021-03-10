@@ -210,14 +210,13 @@ export const moveMixin = {
 
       return legalMoves
     },
-    move (piece, newPos, capturedPiece = null) {
+    move (piece, newPos) {
       if (piece.moves && piece.color === this.activeColor) {
         const move = piece.moves.find(move => _.isEqual(move, newPos))
 
         if (move) {
           this.setCheckState({ color: piece.color, checkState: false })
           this.setPiecePosition({ ...piece, position: newPos })
-          if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
 
           // is move a check, set check state
           this.getLegalMoves(this.getPiece({ ...piece }))
