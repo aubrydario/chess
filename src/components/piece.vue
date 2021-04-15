@@ -55,6 +55,8 @@ export default {
       setClickedPiece: 'SET_CLICKED_PIECE'
     }),
     showPossibleMoves () {
+      console.log(this.getPiece({ id: this.id, name: this.name, color: this.$parent.color }).moves)
+
       if (this.activeColor === this.$parent.color) {
         const piece = this.getPiece({ id: this.id, name: this.name, color: this.$parent.color })
         this.setClickedPiece(piece)

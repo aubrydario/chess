@@ -66,11 +66,10 @@ export default {
       const data = event.target.dataset
       const newPos = { x: parseInt(data.x), y: parseInt(data.y) }
       const oppositeColor = this.activeColor === 'white' ? 'black' : 'white'
-      const capturedPiece = this.getPieceOnPos({ position: newPos, colors: [oppositeColor] })
 
+      this.capturedPiece = this.getPieceOnPos({ position: newPos, colors: [oppositeColor] })
       this.setClickedPiece(null)
 
-      if (capturedPiece) this.setPiecePosition({ ...capturedPiece, position: null })
       this.move(piece, newPos)
 
       return false

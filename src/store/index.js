@@ -83,7 +83,6 @@ export default new Vuex.Store({
       commit('SET_PIECE_POSITION', { piece, position })
     },
     setSimulationPiecePosition ({ commit, state, getters }, { id, color, name, position }) {
-      commit('SET_SIMULATION_PIECES')
       const simulationPiece = getters.getPiece({ id, name, color, simulation: true })
       commit('SET_PIECE_POSITION', { piece: simulationPiece, position })
     },
@@ -108,21 +107,21 @@ export default new Vuex.Store({
     },
     getPieceOnPos: state => ({ position, colors, simulation }) => {
       colors = colors || ['white', 'black']
-      let piece = null
+      let pieceOnPos = null
 
       if (simulation) {
-        colors.some(color => {
-          piece = state.simulationPieces[color]
-            .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+        colors.forEach(color => {
+          const piece = state.simulationPieces[color].find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+          if (piece) pieceOnPos = piece
         })
       } else {
-        colors.some(color => {
-          piece = state.pieces[color]
-            .find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+        colors.forEach(color => {
+          const piece = state.pieces[color].find(piece => piece.position && piece.position.x === position.x && piece.position.y === position.y)
+          if (piece) pieceOnPos = piece
         })
       }
 
-      return piece
+      return pieceOnPos
     },
     getCheckState: state => color => {
       color = color || state.activeColor

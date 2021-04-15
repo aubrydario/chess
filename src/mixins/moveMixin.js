@@ -3,6 +3,7 @@ import _ from 'lodash'
 
 export const moveMixin = {
   data: () => ({
+    capturedPiece: null,
     diagonal: [{ x: 1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: -1, y: -1 }],
     straight: [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]
   }),
@@ -10,6 +11,7 @@ export const moveMixin = {
     ...mapState([
       'activeColor',
       'pieces',
+      'simulationPieces',
       'simulationCheckState'
     ]),
     ...mapGetters([
@@ -24,7 +26,8 @@ export const moveMixin = {
     ...mapMutations({
       setCheckState: 'SET_CHECK_STATE',
       changeActiveColor: 'CHANGE_ACTIVE_COLOR',
-      setSimulationCheckState: 'SET_SIMULATION_CHECK_STATE'
+      setSimulationCheckState: 'SET_SIMULATION_CHECK_STATE',
+      setSimulationPieces: 'SET_SIMULATION_PIECES'
     }),
     ...mapActions([
       'setPiecePosition',
@@ -47,18 +50,17 @@ export const moveMixin = {
       return moves
     },
     simulateIfStillCheck (color) {
-      const pieces = this.pieces[color].filter(piece =>
-        piece.name === 'rook' ||
-        piece.name === 'queen' ||
-        piece.name === 'bishop'
-      )
-
-      pieces.forEach(piece => {
+      this.simulationPieces[color].forEach(piece => {
         if (piece.position) this.getLegalMoves(piece, true)
       })
     },
     blocksCheck (piece, newPos) {
       this.setSimulationCheckState(false)
+      this.setSimulationPieces()
+
+      const capturedPiece = this.getPieceOnPos({ position: newPos, colors: [this.oppositeColor(piece.color)], simulation: true })
+      if (capturedPiece) this.setSimulationPiecePosition({ ...capturedPiece, position: null })
+
       this.setSimulationPiecePosition({ ...piece, position: newPos })
 
       // set check state
@@ -169,7 +171,13 @@ export const moveMixin = {
       })
     },
     getLegalMoves (piece, simulation) {
+      simulation = simulation || false
       let legalMoves = null
+
+      if (this.capturedPiece) {
+        this.setPiecePosition({ ...this.capturedPiece, position: null })
+        this.capturedPiece = null
+      }
 
       switch (piece.name) {
         case 'pawn':
@@ -202,10 +210,6 @@ export const moveMixin = {
         case 'king':
           legalMoves = this.getMovesFromSquares([...this.diagonal, ...this.straight], piece, simulation)
           break
-      }
-
-      if (this.getCheckState(this.activeColor)) {
-
       }
 
       return legalMoves
